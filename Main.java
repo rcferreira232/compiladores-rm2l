@@ -41,7 +41,8 @@ class Main {
         } while (token.sym != 0); // Continue até EOF
 
       System.out.println("=== ANÁLISE SINTÁTICA DO ARQUIVO: " + arquivo + " ===\n");
-      Parser parser_obj = new Parser(new scanner(new FileReader(arquivo)));
+      scanner scanner_obj = new scanner(new FileReader(arquivo));
+      Parser parser_obj = new Parser(scanner_obj);
 
         try {
           parser_obj.parse();

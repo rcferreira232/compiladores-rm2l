@@ -48,7 +48,7 @@ public class AnalisadorSemantico {
         if (!identificadores.containsKey(variavel)) {
             System.out.println("Erro Semantico na linha " + left.toString() + " coluna " + right.toString() + 
             ": Variavel \"" + variavel + "\" precisa ser declarada antes de ser usada.");
-            throw new IllegalArgumentException("Erro Semantico", null);
+            return null;
             // return null;
         }
         tipo1 = identificadores.get(variavel).tipo;
@@ -57,13 +57,13 @@ public class AnalisadorSemantico {
             if (!identificadores.containsKey(valor.resultado)) {
                 System.out.println("\n\nErro Semantico na linha " + left.toString() + " coluna " + right.toString()
                 + ": Variavel \"" + valor.resultado + "\" precisa ser declarada antes de ser usada.");
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             if (!identificadores.get(valor.resultado).estaAtribuido) {
                 System.out.println(String.format("Erro Semantico na linha " + left.toString() + " coluna " + right.toString()
                 + ": Variavel \"" + valor.resultado + "\" precisa ser atribuida antes de ser usada."));
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             tipo2 = identificadores.get(valor.resultado).tipo;
@@ -77,23 +77,23 @@ public class AnalisadorSemantico {
                 case BOOL:
                     System.out.println("Erro Semantico na linha " + left.toString() + " coluna " + right.toString()
                     + ": O tipo boolean da variavel \"" + variavel + "\" so pode receber \"true\" ou \"false\" na atribuicao");
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                 // break;
                 case INT:
                     System.out.println(String.format("Erro Semantico na linha " + left.toString() + 
                     " coluna " + right.toString() + ": O tipo inteiro da variavel \"" + variavel + 
                     "\" so pode receber numeros inteiros na atribuicao"));
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                 // break;
                 case FLOAT:
                     System.out.println(String.format("Erro Semantico na linha " + left.toString() + " coluna " + right.toString() + 
                     ": O tipo float da variavel \"" + variavel + "\" so pode receber números decimais na atribuicao"));
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                 // break;
                 case CHAR:
                     System.out.println(String.format("Erro Semantico na linha " + left.toString() + " coluna " + right.toString() + 
                     ": O tipo char da variavel \"" + variavel + "\" so pode receber um caractere por vez"));
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                 // break;
             }
         }
@@ -113,13 +113,13 @@ public class AnalisadorSemantico {
             if (!identificadores.containsKey(var1.resultado)) {
                 System.out.println("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                 + ": Variavel \"" + var1.resultado + "\" precisa ser declarada antes de ser usada.");
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             if (!identificadores.get(var1.resultado).estaAtribuido) {
                 System.out.println(String.format("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                 + ": Variavel \"" + var1.resultado + "\" precisa ser atribuida antes de ser usada."));
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             tipo1 = identificadores.get(var1.resultado).tipo;
@@ -130,13 +130,13 @@ public class AnalisadorSemantico {
             if (!identificadores.containsKey(var2.resultado)) {
                 System.out.println("Erro Semantico na linha " + left2.toString() + " coluna " + right2.toString()
                 + ": Variavel \"" + var2.resultado + "\" precisa ser declarada antes de ser usada.");
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             if (!identificadores.get(var2.resultado).estaAtribuido) {
                 System.out.println(String.format("Erro Semantico na linha " + left2.toString() + " coluna " + right2.toString()
                 + ": Variavel \"" + var2.resultado + "\" precisa ser atribuida antes de ser usada."));
-                throw new IllegalArgumentException("Erro Semantico", null);
+                return null;
                 // return null;
             }
             tipo2 = identificadores.get(var2.resultado).tipo;
@@ -157,13 +157,13 @@ public class AnalisadorSemantico {
                 if (tipo1 == TipoVariavel.CHAR || tipo2 == TipoVariavel.CHAR) {
                     System.out.println("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                     + ": Operadores aritmeticos não podem ser executados com o tipo char");
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                     // return null;
                 }
                 if (tipo1 == TipoVariavel.BOOL || tipo2 == TipoVariavel.BOOL) {
                     System.out.println("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                     + ": Operadores aritmeticos não podem ser executados com o tipo bool");
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                     // return null;
                 }
                 if (operador == "+" || operador == "-" || operador == "*" || operador == "/") {
@@ -176,7 +176,7 @@ public class AnalisadorSemantico {
                 if (tipo1 != tipo2) {
                     System.out.println("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                     + ": comparacao precisa ser de variaveis de mesmo tipo(" + tipo1 + " != " + tipo2 + ")");
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                     // return null;
                 }
                 break;
@@ -187,7 +187,7 @@ public class AnalisadorSemantico {
                 if (tipo1 != TipoVariavel.BOOL || tipo2 != TipoVariavel.BOOL) {
                     System.out.println("Erro Semantico na linha " + left1.toString() + " coluna " + right1.toString()
                     + ": operadores logicos so podem ser realizados entre tipos booleanos");
-                    throw new IllegalArgumentException("Erro Semantico", null);
+                    return null;
                     // return null;
                 }
                 break;

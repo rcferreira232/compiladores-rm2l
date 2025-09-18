@@ -6,10 +6,26 @@ para o funcionamento do analisador gerado. Importar todas as classes usando
 import java_cup.runtime.*; simplifica o código, pois permite que você use as 
 classes da biblioteca sem ter que especificar cada uma delas separadamente.*/
 
+import java.io.*;
+import java.util.*;
+
+action code
+{:
+	AnalisadorSemantico analisadorSemantico = new AnalisadorSemantico();
+	Gerador gerador = new Gerador(); 
+:};
+
 parser code {:
+    private AnalisadorSemantico analisadorSemantico = new AnalisadorSemantico();
+    
+    @SuppressWarnings("unchecked")
     public void syntax_error(java_cup.runtime.Symbol currToken) {
         System.out.println("Funcionou!: " 
         + "Linha: " + (currToken.left) + " Coluna: " + (currToken.right));
+    }
+    
+    public AnalisadorSemantico getAnalisadorSemantico() {
+        return analisadorSemantico;
     }
 :}
 /*Descreve as regras de produção para uma linguagem de programação fictícia. 
@@ -54,17 +70,19 @@ menor do que os operadores à sua esquerda.*/
 /*precedence nonassoc: Indica que os operadores listados não são associativos entre si, Ou seja, 
 expressões ambíguas resultarão em um erro de redução.*/
 
+start with unidade_de_compilacao;
+
 /*Regras*/
-unidade_de_compilacao ::= declaracao unidade_de_compilacao
-                        | instrucao unidade_de_compilacao
-                        | instrucao_composta unidade_de_compilacao
+unidade_de_compilacao ::= declaracao:r unidade_de_compilacao {:if(r!=null){Gerador.gravarArquivo(r.toString());}:}
+                        | instrucao:r unidade_de_compilacao {:if(r!=null){Gerador.gravarArquivo(r.toString());}:}
+                        | instrucao_composta:r unidade_de_compilacao {:if(r!=null){Gerador.gravarArquivo(r.toString());}:}
                         |
                         ;
 
-especificador_tipo ::= INTEIRO_RESERVADO
-                       | DECIMAL_RESERVADO
-                       | CARACTER_RESERVADO
-                       | BOOLEANO_RESERVADO
+especificador_tipo ::= INTEIRO_RESERVADO {: RESULT = TipoVariavel.INT; :}
+                       | DECIMAL_RESERVADO {: RESULT = TipoVariavel.FLOAT; :}
+                       | CARACTER_RESERVADO {: RESULT = TipoVariavel.CHAR; :}
+                       | BOOLEANO_RESERVADO {: RESULT = TipoVariavel.BOOL; :}
                        ;
 
 declaracao ::= FECHA_COMANDO IDENTIFICADOR especificador_tipo 
@@ -73,8 +91,8 @@ declaracao ::= FECHA_COMANDO IDENTIFICADOR especificador_tipo
                 {: System.out.println("Variavel declarada\n"); :}
                 ;
 
-expressao ::= expressao_atribuicao 
-		      | expressao VIRGULA expressao_atribuicao 
+expressao ::= expressao_atribuicao:e {: RESULT = e; :}
+		      | expressao:e VIRGULA expressao_atribuicao:ea {: RESULT = e + "," + ea; :}
               ;
 
 expressao_atribuicao ::= FECHA_COMANDO expressao_condicional
@@ -86,118 +104,151 @@ expressao_atribuicao ::= FECHA_COMANDO expressao_condicional
 operador_atribuicao ::= ATRIBUICAO
                       ;
 
-constante ::=   CARACTER 
-              | INTEIRO 
-              | DECIMAL 
-              | BOOLEANO
+constante ::=   CARACTER:c {: RESULT = new Expressao(c.toString(),TipoVariavel.CHAR,false); :}
+              | INTEIRO:i {: RESULT = new Expressao(i.toString(),TipoVariavel.INT,false); :}
+              | DECIMAL:d {: RESULT = new Expressao(d.toString(),TipoVariavel.FLOAT,false); :}
+              | BOOLEANO:b {: RESULT = new Expressao(b.toString(),TipoVariavel.BOOL,false); :}
               ;
 
 /*Operações Lógicas*/               
-expressao_condicional ::= expressao_ou ;
+expressao_condicional ::= expressao_ou:exp {:RESULT = exp;:};
 
-expressao_ou ::= expressao_e
-				 | expressao_ou OU expressao_e 
-                 {: System.out.println("Expressao logica OU encontrada \n "); :}
+expressao_ou ::= expressao_e:exp {:RESULT = exp;:}
+				 | expressao_ou:var1 OU expressao_e:var2 
+                 {: 
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "||", var1left, var1right, var2left, var2right);
+:}
                  ;
 
-expressao_e ::= expressao_ou_exclusivo
-			      | expressao_e E expressao_ou_exclusivo 
-                  {: System.out.println("Expressao logica E encontrada \n "); :}
-                  ;
+expressao_e ::= expressao_ou_exclusivo:exp {:RESULT = exp;:}
+			      | expressao_e:var1 E expressao_ou_exclusivo:var2 
+{:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "&&", var1left, var1right, var2left, var2right);
+:}
+                    ;
 
-expressao_ou_exclusivo ::= expressao_equalidade
-				  | expressao_ou_exclusivo OU_EXCLUSIVO expressao_equalidade 
-                  {: System.out.println("Expressao logica OU_EXCLUSIVO encontrada \n "); :}
-                  ;
+expressao_ou_exclusivo ::= expressao_equalidade:exp {:RESULT = exp;:}
+				  | expressao_ou_exclusivo:var1 OU_EXCLUSIVO expressao_equalidade:var2
+{:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "^", var1left, var1right, var2left, var2right);
+:}
+                    ;
 
-expressao_equalidade ::= expressao_relacional
-                         | expressao_equalidade EQUIVALENCIA expressao_relacional  
-                         {: System.out.println("Expressao relacional '==' encontrada \n "); :}
-                         | expressao_equalidade DIFERENTE expressao_relacional 
-                         {: System.out.println("Expressao relacional '!=' encontrada \n "); :}
+expressao_equalidade ::= expressao_relacional:exp {:RESULT = exp;:}
+                         | expressao_equalidade:var1 EQUIVALENCIA expressao_relacional:var2  
+{:     
+        RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "==", var1left, var1right, var2left, var2right);
+:}
+                         | expressao_equalidade:var1 DIFERENTE expressao_relacional:var2
+                         {:     
+        RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "!=", var1left, var1right, var2left, var2right);
+:}
                          ;
 
-expressao_relacional ::= expressao_aditiva
-                         | expressao_relacional MENOR_QUE expressao_aditiva 
-                         {: System.out.println("Expressao relacional '<' encontrada \n "); :}
-                         | expressao_relacional MAIOR_QUE expressao_aditiva 
-                         {: System.out.println("Expressao relacional '>' encontrada \n "); :}
-                         | expressao_relacional MENOR_IGUAL  expressao_aditiva 
-                         {: System.out.println("Expressao relacional '<=' encontrada \n "); :}
-                         | expressao_relacional MAIOR_IGUAL  expressao_aditiva 
-                         {: System.out.println("Expressao relacional '>=' encontrada \n "); :}
+expressao_relacional ::= expressao_aditiva:exp {:RESULT = exp;:}
+                         | expressao_relacional:var1 MENOR_QUE expressao_aditiva:var2
+{:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "<", var1left, var1right, var2left, var2right);
+:}
+                         | expressao_relacional:var1 MAIOR_QUE expressao_aditiva:var2
+                         {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "<", var1left, var1right, var2left, var2right);
+:}
+                         | expressao_relacional:var1 MENOR_IGUAL  expressao_aditiva:var2
+                         {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, ">", var1left, var1right, var2left, var2right);
+:}
+                         | expressao_relacional:var1 MAIOR_IGUAL  expressao_aditiva:var2
+                         {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, ">", var1left, var1right, var2left, var2right);
+:}
                          ;
 
 /*Operações Aritméticas*/
-expressao_aditiva ::= expressao_multiplicativa
-                      | expressao_aditiva MAIS expressao_multiplicativa 
-                      {: System.out.println("Expressao aritmetica de ADICAO encontrada \n "); :}
-                      | expressao_aditiva MENOS expressao_multiplicativa 
-                      {: System.out.println("Expressao aritmetica de SUBTRACAO encontrada \n "); :}
+expressao_aditiva ::= expressao_multiplicativa:exp {:RESULT = exp;:}
+                      | expressao_aditiva:var1 MAIS expressao_multiplicativa:var2
+                      {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "+", var1left, var1right, var2left, var2right);
+:}
+                      | expressao_aditiva:var1 MENOS expressao_multiplicativa:var2
+                      {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "-", var1left, var1right, var2left, var2right);
+:}
                       ;
 
-expressao_multiplicativa ::= expressao_primaria
-                             | expressao_multiplicativa MULTIPLICACAO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de MULTIPLICACAO encontrada \n "); :}
-                             | expressao_multiplicativa DIVISAO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de  DIVISAO encontrada \n "); :}
-                             | expressao_multiplicativa RESTO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de RESTO encontrada \n "); :}
+expressao_multiplicativa ::= expressao_primaria:exp {:RESULT = exp;:}
+                             | expressao_multiplicativa:var1 MULTIPLICACAO expressao_primaria:var2
+                             {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "*", var1left, var1right, var2left, var2right);
+:}
+                             | expressao_multiplicativa:var1 DIVISAO expressao_primaria:var2
+                             {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "/", var1left, var1right, var2left, var2right);
+:}
+                             | expressao_multiplicativa:var1 RESTO expressao_primaria:var2
+                             {:     
+    RESULT = parser.getAnalisadorSemantico().testarExpressao((Expressao)var1, (Expressao)var2, "%", var1left, var1right, var2left, var2right);
+:}
                              ;
 
-expressao_primaria ::= IDENTIFICADOR
-                       | constante
+expressao_primaria ::= IDENTIFICADOR:var {:RESULT = new Expressao(var.toString(),null,true); :}
+                       | constante:var {:RESULT = var;:}
                        ;
 
 /*Instruções e Comandos*/
-instrucao_composta ::= ABRE_BLOCO bloco_instrucao FECHA_BLOCO
+instrucao_composta ::= ABRE_BLOCO bloco_instrucao:inst FECHA_BLOCO
+{:RESULT = "{" + inst.toString() + "}";:}
                      ;
 
-bloco_instrucao ::= /*empty*/
-                  | declaracao bloco_instrucao
-                  | instrucao bloco_instrucao
+bloco_instrucao ::= /*empty*/ {:RESULT = "";:}
+                  | declaracao:d bloco_instrucao:b {:RESULT = d.toString() + b;:}
+                  | instrucao:i bloco_instrucao:b {:RESULT = i.toString() + b;:}
                   ;
 
-instrucao ::= expressao
-              | instrucao_se
-              | instrucao_iterativa
-              | instrucao_pulo
-		      | comando
+instrucao ::= expressao:e {:RESULT = e;:}
+              | instrucao_se:i {:RESULT = i;:}
+              | instrucao_iterativa:i {:RESULT = i;:}
+              | instrucao_pulo:i {:RESULT = i;:}
+		      | comando:c {:RESULT = c;:}
               ;
 
-instrucao_se ::= ABRE_PARENTESES expressao_condicional FECHA_PARENTESES SE instrucao_composta 
-{: System.out.println("Fim da Instrucao SE\n "); :}
-               | ABRE_PARENTESES expressao_condicional FECHA_PARENTESES SE instrucao_composta SE_NAO instrucao_composta 
-               {: System.out.println("Fim da Instrucao SE SE_NAO\n "); :}
+instrucao_se ::= ABRE_PARENTESES expressao_condicional:exp FECHA_PARENTESES SE instrucao_composta:inst
+{: RESULT = "if(" + ((Expressao)exp).resultado + ")" + inst;:}
+               | ABRE_PARENTESES expressao_condicional:exp FECHA_PARENTESES SE instrucao_composta:inst SE_NAO instrucao_composta:inst2
+{: RESULT = "if(" + ((Expressao)exp).resultado + ")" + inst + " else " + inst2;:}
                ;
 
 /*Instruções Iterativas*/
-instrucao_iterativa ::= ABRE_PARENTESES expressao_condicional FECHA_PARENTESES ENQUANTO instrucao_composta 
-                    {: System.out.println("Fim do Comando ENQUANTO\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO expressao_condicional FECHA_COMANDO expressao FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO expressao_condicional FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO FECHA_COMANDO expressao FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA \n "); :}
+instrucao_iterativa ::= ABRE_PARENTESES expressao_condicional:exp FECHA_PARENTESES ENQUANTO instrucao_composta:inst
+                    {: RESULT = "while(" + ((Expressao)exp).resultado + ")" + inst;:}
+                    | ABRE_PARENTESES expressao_atribuicao:ea FECHA_COMANDO expressao_condicional:exp FECHA_COMANDO expressao:e FECHA_PARENTESES PARA instrucao_composta:inst
+                    {: RESULT = "for(" + ea + ";" + ((Expressao)exp).resultado + ";" + e + ")" + inst;:}
+                    | ABRE_PARENTESES expressao_atribuicao:ea FECHA_COMANDO expressao_condicional:exp FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta:inst
+                    {: RESULT = "for(" + ea + ";" + ((Expressao)exp).resultado + ";)" + inst;:}
+                    | ABRE_PARENTESES expressao_atribuicao:ea FECHA_COMANDO FECHA_COMANDO expressao:e FECHA_PARENTESES PARA instrucao_composta:inst
+                    {: RESULT = "for(" + ea + ";;" + e + ")" + inst;:}
+                    | ABRE_PARENTESES expressao_atribuicao:ea FECHA_COMANDO FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta:inst
+                    {: RESULT = "for(" + ea + ";;)" + inst;:}
                     ;
 
 /*Instruções de Pulo*/                      
-instrucao_pulo ::=   FECHA_COMANDO CONTINUAR
-                   | FECHA_COMANDO PARAR
-                   | FECHA_COMANDO expressao RETORNAR
+instrucao_pulo ::=   FECHA_COMANDO CONTINUAR {:RESULT = "continue;";:}
+                   | FECHA_COMANDO PARAR {:RESULT = "break;";:}
+                   | FECHA_COMANDO expressao:exp RETORNAR {:RESULT = "return" + exp + ";";:}
                    ;
 
 /*Comandos*/
-comando ::= comando_escreva | comando_guarda ;
+comando ::= comando_escreva:r {:RESULT = r;:} | comando_guarda:r {:RESULT = r;:} ;
 
-comando_escreva ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR FECHA_PARENTESES ESCREVA
-{: System.out.println("Comando ESCREVA encontrado\n "); :}
-			      | FECHA_COMANDO ABRE_PARENTESES STRING FECHA_PARENTESES ESCREVA
-                  {: System.out.println("Comando ESCREVA encontrado\n "); :}
+comando_escreva ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR:id FECHA_PARENTESES ESCREVA
+{: RESULT = "printf(\"%" + parser.getAnalisadorSemantico().obterCharDoTipo(parser.getAnalisadorSemantico().obterTipo(id)) + "\"," + id.toString() + ");"; :}
+			      | FECHA_COMANDO ABRE_PARENTESES STRING:strg FECHA_PARENTESES ESCREVA
+                  {: RESULT = "printf(\"" + strg.toString() + "\");"; :}
                   ;
 
-comando_guarda ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR FECHA_PARENTESES GUARDA 
-{: System.out.println("Comando GUARDA encontrado\n "); :};
+comando_guarda ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR:id FECHA_PARENTESES GUARDA
+{: 
+    Identificador i = parser.getAnalisadorSemantico().obterIdentificador(id, idleft, idright);
+    if(i!=null) i.estaAtribuido = true;
+    RESULT = "scanf(\"%" + parser.getAnalisadorSemantico().obterCharDoTipo(parser.getAnalisadorSemantico().obterTipo(id)) + "\",&" + id.toString() + ");"; 
+:};
