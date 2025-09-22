@@ -1,7 +1,10 @@
 Trabalho T1: Compiladores;
-Linguagem de Programação: Linguagem Invertida;
-Desenvolvida por: ;
+Linguagem de Programação: ͻ;
+Desenvolvida por: Lucas Travessa, Lucas Corrado, Rafael Cruz, Mateus Ramos;
 Curso: Bacharelado em Engenharia De Computação;
+
+Arquivos certos: certo-errado-01 ... certo-errado-03
+Arquivos errados: errado-certo-01 ... errado-certo-03
 
 ---------------------------------------------------------------------------------------------------
 
@@ -11,11 +14,11 @@ Curso: Bacharelado em Engenharia De Computação;
 <inicio bloco> ::= }
 <fim bloco> ::= {
 <comandos> ::= <comando fi> | <declaracao de variavel> | <atribuicao de variavel> | <expressao aritmetica>
-<comando fi> ::= )<expressao>( fi <bloco comandos> 
-<comando elihw> ::= )<expressao>( elihw <bloco comandos>
-<comando rof> ::= )<expressao> @ <expressao> @ <atribuicao de variavel> ( rof <bloco comandos>
-<comando fnacs> ::= @ )<identificador>(fnacs
-<comando ftnirp> ::= @ )<identificador>(ftnirp | @ )<string>(ftnirp
+<comando if> ::= )<expressao>( esle <bloco comandos> 
+<comando while> ::= )<expressao>( rof <bloco comandos>
+<comando for> ::= )<expressao> @ <expressao> @ <atribuicao de variavel> ( elihw <bloco comandos>
+<comando scanf> ::= @ )<identificador>(ftnirp
+<comando printf> ::= @ )<identificador>(fnacs | @ )<string>(fnacs
 <declaracao de variavel> ::= @ <identificador> <tipo>
 <atribuicao de variavel> ::= <expressao aritmetica simples> ~ <identificador>
 <expressao aritmetica> ::= <expressao aritmetica simples> | <expressao aritmetica simples> <operador aritmetico> <expressao aritmetica simples>
@@ -27,7 +30,7 @@ Curso: Bacharelado em Engenharia De Computação;
 <tipo> ::= tni | taolf | rahc | gnirts | naeloob
 <string> ::= " <letra> | <letra> <string> | <string> <letra> | <string> <digito> | <string>.<string>
 <letra> ::= a | b | c | ... | z | A | B | C | ... | Z
-<operador relacional> ::= == | <> | < | <= | >= | >
+<operador relacional> ::= == | ^ | < | =< | => | > | != | i
 <operador aritmetico> ::= - | + | / | * | %
 <digito> ::= 0 | 1 | ... | 9
 <sinal> ::= + | - | <vazio>

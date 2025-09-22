@@ -1,10 +1,20 @@
 //CUP (Constructor of Useful Parsers)
 
 import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
 /*Essa biblioteca fornece classes e estruturas de dados que são necessárias 
 para o funcionamento do analisador gerado. Importar todas as classes usando 
 import java_cup.runtime.*; simplifica o código, pois permite que você use as 
 classes da biblioteca sem ter que especificar cada uma delas separadamente.*/
+
+action code
+{:
+	Analisadorsemantico analisadorsemantico = new Analisadorsemantico();
+	Tabelasimbolos tabelasimbolos = new Tabelasimbolos();
+	String tipo_identificador = new String();
+	Geradorcodigo gerador = new Geradorcodigo();
+:};
 
 parser code {:
     public void syntax_error(java_cup.runtime.Symbol currToken) {
@@ -58,146 +68,245 @@ expressões ambíguas resultarão em um erro de redução.*/
 unidade_de_compilacao ::= declaracao unidade_de_compilacao
                         | instrucao unidade_de_compilacao
                         | instrucao_composta unidade_de_compilacao
-                        |
+                        | 
+                        {: gerador.finalizar_programa(); :}
                         ;
 
 especificador_tipo ::= INTEIRO_RESERVADO
+                       {: RESULT = "inteiro"; :}
                        | DECIMAL_RESERVADO
+                       {: RESULT = "float"; :}
                        | CARACTER_RESERVADO
+                       {: RESULT = "char"; :}
                        | BOOLEANO_RESERVADO
+                       {: RESULT = "booleano"; :}
                        ;
 
-declaracao ::= FECHA_COMANDO IDENTIFICADOR especificador_tipo 
-                {: System.out.println("Variavel declarada\n"); :}
-    	       |  FECHA_COMANDO ABRE_COLCHETE INTEIRO FECHA_COLCHETE IDENTIFICADOR especificador_tipo
-                {: System.out.println("Variavel declarada\n"); :}
+declaracao ::= FECHA_COMANDO IDENTIFICADOR:e2 especificador_tipo:e1 
+                {: tabelasimbolos.inserir_simbolo(e2, e1);
+                   RESULT = "DECLARACAO DE VARIAVEL [" + e2 + "]  do tipo: " + e1;
+                   System.out.println("Variavel declarada: " + e2 + " do tipo " + e1 + "\n");
+                   gerador.declarar_variavel(e2.toString(), e1.toString()); :}
+    	       |  FECHA_COMANDO ABRE_COLCHETE INTEIRO FECHA_COLCHETE IDENTIFICADOR:e2 especificador_tipo:e1
+                {: tabelasimbolos.inserir_simbolo(e2, e1);
+                   RESULT = "DECLARACAO DE ARRAY [" + e2 + "]  do tipo: " + e1;
+                   System.out.println("Array declarado: " + e2 + " do tipo " + e1 + "\n"); :}
                 ;
 
-expressao ::= expressao_atribuicao 
-		      | expressao VIRGULA expressao_atribuicao 
+expressao ::= expressao_atribuicao:e1
+               {: RESULT = e1; :}
+		      | expressao:e1 VIRGULA expressao_atribuicao:e2
+              {: RESULT = e1 + ", " + e2; :}
               ;
 
-expressao_atribuicao ::= FECHA_COMANDO expressao_condicional
-                         | expressao_condicional 
-                         | expressao_atribuicao operador_atribuicao IDENTIFICADOR
-                         {: System.out.println("Atribuicao feita a um identificador\n "); :}
+expressao_atribuicao ::= expressao_condicional:e1
+                         {: RESULT = e1; :}
+                         | IDENTIFICADOR:e1 operador_atribuicao expressao_condicional:e2
+                         {: tipo_identificador = tabelasimbolos.consultar_tipo_identificador(e1);
+                            if (tipo_identificador != "") {
+                                if (analisadorsemantico.verificar_atribuicao(e1, e2, tipo_identificador))
+                                   RESULT = "ERRO SEMANTICO";
+                                else {
+                                   RESULT = "ATRIBUICAO: [" + e1 + "]  recebe " + e2;
+                                   gerador.gerar_atribuicao(e1, e2);
+                                }
+                            }
+                            System.out.println("Atribuicao feita a um identificador: " + e1 + " = " + e2 + "\n "); :}
                          ;
 
 operador_atribuicao ::= ATRIBUICAO
                       ;
 
-constante ::=   CARACTER 
-              | INTEIRO 
-              | DECIMAL 
-              | BOOLEANO
+constante ::=   CARACTER:e1
+                {: RESULT = "" + e1; :}
+              | INTEIRO:e1
+                {: RESULT = "" + e1; :}
+              | DECIMAL:e1
+                {: RESULT = "" + e1; :}
+              | BOOLEANO:e1
+                {: RESULT = "" + e1; :}
               ;
 
 /*Operações Lógicas*/               
-expressao_condicional ::= expressao_ou ;
+expressao_condicional ::= expressao_ou:e1
+                          {: RESULT = e1; :} ;
 
-expressao_ou ::= expressao_e
-				 | expressao_ou OU expressao_e 
-                 {: System.out.println("Expressao logica OU encontrada \n "); :}
+expressao_ou ::= expressao_e:e1
+                  {: RESULT = e1; :}
+				 | expressao_ou:e1 OU expressao_e:e2
+                 {: RESULT = e1 + " OR " + e2;
+                    System.out.println("Expressao logica OU encontrada \n "); :}
                  ;
 
-expressao_e ::= expressao_ou_exclusivo
-			      | expressao_e E expressao_ou_exclusivo 
-                  {: System.out.println("Expressao logica E encontrada \n "); :}
+expressao_e ::= expressao_ou_exclusivo:e1
+                 {: RESULT = e1; :}
+			      | expressao_e:e1 E expressao_ou_exclusivo:e2
+                  {: RESULT = e1 + " AND " + e2;
+                     System.out.println("Expressao logica E encontrada \n "); :}
                   ;
 
-expressao_ou_exclusivo ::= expressao_equalidade
-				  | expressao_ou_exclusivo OU_EXCLUSIVO expressao_equalidade 
-                  {: System.out.println("Expressao logica OU_EXCLUSIVO encontrada \n "); :}
+expressao_ou_exclusivo ::= expressao_equalidade:e1
+                            {: RESULT = e1; :}
+				  | expressao_ou_exclusivo:e1 OU_EXCLUSIVO expressao_equalidade:e2
+                  {: RESULT = e1 + " XOR " + e2;
+                     System.out.println("Expressao logica OU_EXCLUSIVO encontrada \n "); :}
                   ;
 
-expressao_equalidade ::= expressao_relacional
-                         | expressao_equalidade EQUIVALENCIA expressao_relacional  
-                         {: System.out.println("Expressao relacional '==' encontrada \n "); :}
-                         | expressao_equalidade DIFERENTE expressao_relacional 
-                         {: System.out.println("Expressao relacional '!=' encontrada \n "); :}
+expressao_equalidade ::= expressao_relacional:e1
+                          {: RESULT = e1; :}
+                         | expressao_equalidade:e1 EQUIVALENCIA expressao_relacional:e2
+                         {: RESULT = e1 + "==" + e2;
+                            System.out.println("Expressao relacional '==' encontrada \n "); :}
+                         | expressao_equalidade:e1 DIFERENTE expressao_relacional:e2
+                         {: RESULT = e1 + "!=" + e2;
+                            System.out.println("Expressao relacional '!=' encontrada \n "); :}
                          ;
 
-expressao_relacional ::= expressao_aditiva
-                         | expressao_relacional MENOR_QUE expressao_aditiva 
-                         {: System.out.println("Expressao relacional '<' encontrada \n "); :}
-                         | expressao_relacional MAIOR_QUE expressao_aditiva 
-                         {: System.out.println("Expressao relacional '>' encontrada \n "); :}
-                         | expressao_relacional MENOR_IGUAL  expressao_aditiva 
-                         {: System.out.println("Expressao relacional '<=' encontrada \n "); :}
-                         | expressao_relacional MAIOR_IGUAL  expressao_aditiva 
-                         {: System.out.println("Expressao relacional '>=' encontrada \n "); :}
+expressao_relacional ::= expressao_aditiva:e1
+                          {: RESULT = e1; :}
+                         | expressao_relacional:e1 MENOR_QUE expressao_aditiva:e2
+                         {: RESULT = e1 + "<" + e2;
+                            System.out.println("Expressao relacional '<' encontrada \n "); :}
+                         | expressao_relacional:e1 MAIOR_QUE expressao_aditiva:e2
+                         {: RESULT = e1 + ">" + e2;
+                            System.out.println("Expressao relacional '>' encontrada \n "); :}
+                         | expressao_relacional:e1 MENOR_IGUAL  expressao_aditiva:e2
+                         {: RESULT = e1 + "<=" + e2;
+                            System.out.println("Expressao relacional '<=' encontrada \n "); :}
+                         | expressao_relacional:e1 MAIOR_IGUAL  expressao_aditiva:e2
+                         {: RESULT = e1 + ">=" + e2;
+                            System.out.println("Expressao relacional '>=' encontrada \n "); :}
                          ;
 
 /*Operações Aritméticas*/
-expressao_aditiva ::= expressao_multiplicativa
-                      | expressao_aditiva MAIS expressao_multiplicativa 
-                      {: System.out.println("Expressao aritmetica de ADICAO encontrada \n "); :}
-                      | expressao_aditiva MENOS expressao_multiplicativa 
-                      {: System.out.println("Expressao aritmetica de SUBTRACAO encontrada \n "); :}
+expressao_aditiva ::= expressao_multiplicativa:e1
+                      {: RESULT = e1; :}
+                      | expressao_aditiva:e1 MAIS expressao_multiplicativa:e2
+                      {: RESULT = "Adicao -> " + e1 + "+" + e2;
+                         System.out.println("Expressao aritmetica de ADICAO encontrada \n "); :}
+                      | expressao_aditiva:e1 MENOS expressao_multiplicativa:e2
+                      {: RESULT = "Subtracao -> " + e1 + "-" + e2;
+                         System.out.println("Expressao aritmetica de SUBTRACAO encontrada \n "); :}
                       ;
 
-expressao_multiplicativa ::= expressao_primaria
-                             | expressao_multiplicativa MULTIPLICACAO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de MULTIPLICACAO encontrada \n "); :}
-                             | expressao_multiplicativa DIVISAO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de  DIVISAO encontrada \n "); :}
-                             | expressao_multiplicativa RESTO expressao_primaria 
-                             {: System.out.println("Expressao aritmetica de RESTO encontrada \n "); :}
+expressao_multiplicativa ::= expressao_primaria:e1
+                              {: RESULT = e1; :}
+                             | expressao_multiplicativa:e1 MULTIPLICACAO expressao_primaria:e2
+                             {: RESULT = "Multiplicacao -> " + e1 + "*" + e2;
+                                System.out.println("Expressao aritmetica de MULTIPLICACAO encontrada \n "); :}
+                             | expressao_multiplicativa:e1 DIVISAO expressao_primaria:e2
+                             {: RESULT = "Divisao -> " + e1 + "/" + e2;
+                                System.out.println("Expressao aritmetica de  DIVISAO encontrada \n "); :}
+                             | expressao_multiplicativa:e1 RESTO expressao_primaria:e2
+                             {: RESULT = "Resto -> " + e1 + "%" + e2;
+                                System.out.println("Expressao aritmetica de RESTO encontrada \n "); :}
                              ;
 
-expressao_primaria ::= IDENTIFICADOR
-                       | constante
+expressao_primaria ::= IDENTIFICADOR:e1
+                        {: RESULT = e1; :}
+                       | constante:e1
+                        {: RESULT = e1; :}
                        ;
 
 /*Instruções e Comandos*/
-instrucao_composta ::= ABRE_BLOCO bloco_instrucao FECHA_BLOCO
+instrucao_composta ::= ABRE_BLOCO bloco_instrucao:e1 FECHA_BLOCO
+                       {: RESULT = "BLOCO: " + e1; :}
                      ;
 
 bloco_instrucao ::= /*empty*/
-                  | declaracao bloco_instrucao
-                  | instrucao bloco_instrucao
+                    {: RESULT = ""; :}
+                  | declaracao:e1 bloco_instrucao:e2
+                    {: RESULT = e1 + "; " + e2; :}
+                  | instrucao:e1 bloco_instrucao:e2
+                    {: RESULT = e1 + "; " + e2; :}
                   ;
 
-instrucao ::= expressao
-              | instrucao_se
-              | instrucao_iterativa
-              | instrucao_pulo
-		      | comando
+instrucao ::= expressao:e1
+               {: RESULT = e1; :}
+              | instrucao_se:e1
+               {: RESULT = e1; :}
+              | instrucao_iterativa:e1
+               {: RESULT = e1; :}
+              | instrucao_pulo:e1
+               {: RESULT = e1; :}
+		      | comando:e1
+               {: RESULT = e1; :}
+              | FECHA_COMANDO constante:e2 operador_atribuicao IDENTIFICADOR:e1
+              {: tipo_identificador = tabelasimbolos.consultar_tipo_identificador(e1);
+                 if (tipo_identificador != "") {
+                     if (analisadorsemantico.verificar_atribuicao(e1, e2, tipo_identificador))
+                        RESULT = "ERRO SEMANTICO";
+                     else {
+                        RESULT = "ATRIBUICAO: [" + e1 + "]  recebe " + e2;
+                        gerador.gerar_atribuicao(e1, e2);
+                     }
+                  }
+                  System.out.println("Atribuicao de constante a identificador: " + e1 + " = " + e2 + "\n "); :}
+              | error
+               {: RESULT = "ERRO DE SINTAXE"; :}
               ;
 
-instrucao_se ::= ABRE_PARENTESES expressao_condicional FECHA_PARENTESES SE instrucao_composta 
-{: System.out.println("Fim da Instrucao SE\n "); :}
-               | ABRE_PARENTESES expressao_condicional FECHA_PARENTESES SE instrucao_composta SE_NAO instrucao_composta 
-               {: System.out.println("Fim da Instrucao SE SE_NAO\n "); :}
+instrucao_se ::= ABRE_PARENTESES expressao_condicional:e1 FECHA_PARENTESES SE instrucao_composta:s
+                 {: RESULT = "COMANDO SE: se a condicao " + e1 + " for verdadeira EXECUTA: " + s;
+                    gerador.gerar_cond(e1);
+                    gerador.fechar_bloco();
+                    System.out.println("Fim da Instrucao SE\n "); :}
+               | ABRE_PARENTESES expressao_condicional:e1 FECHA_PARENTESES SE instrucao_composta:s SE_NAO instrucao_composta:s1
+               {: RESULT = "COMANDO SE SE_NAO: se a condicao " + e1 + " for verdadeira EXECUTA: " + s + ", senao: " + s1;
+                  gerador.gerar_cond(e1);
+                  gerador.gerar_else();
+                  gerador.fechar_bloco();
+                  System.out.println("Fim da Instrucao SE SE_NAO\n "); :}
                ;
 
 /*Instruções Iterativas*/
-instrucao_iterativa ::= ABRE_PARENTESES expressao_condicional FECHA_PARENTESES ENQUANTO instrucao_composta 
-                    {: System.out.println("Fim do Comando ENQUANTO\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO expressao_condicional FECHA_COMANDO expressao FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO expressao_condicional FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO FECHA_COMANDO expressao FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA\n "); :}
-                    | ABRE_PARENTESES expressao_atribuicao FECHA_COMANDO FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta 
-                    {: System.out.println("Fim do Comando PARA \n "); :}
+instrucao_iterativa ::= ABRE_PARENTESES expressao_condicional:e1 FECHA_PARENTESES ENQUANTO instrucao_composta:s
+                        {: RESULT = "COMANDO ENQUANTO, CONDICAO: " + e1 + ", EXECUTA: " + s;
+                           System.out.println("Fim do Comando ENQUANTO\n ");
+                           gerador.gerar_while(e1);
+                           gerador.fechar_bloco(); :}
+                    | ABRE_PARENTESES expressao_atribuicao:e1 FECHA_COMANDO expressao_condicional:e2 FECHA_COMANDO expressao:e3 FECHA_PARENTESES PARA instrucao_composta:s
+                    {: RESULT = "COMANDO PARA: init: " + e1 + ", CONDICAO:" + e2 + ", incremento: " + e3 + ", EXECUTA: " + s;
+                       System.out.println("Fim do Comando PARA\n ");
+                       gerador.gerar_for(e1, e2, e3);
+                       gerador.fechar_bloco(); :}
+                    | ABRE_PARENTESES expressao_atribuicao:e1 FECHA_COMANDO expressao_condicional:e2 FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta:s
+                    {: RESULT = "COMANDO PARA: init: " + e1 + ", CONDICAO:" + e2 + ", EXECUTA: " + s;
+                       System.out.println("Fim do Comando PARA\n "); :}
+                    | ABRE_PARENTESES expressao_atribuicao:e1 FECHA_COMANDO FECHA_COMANDO expressao:e3 FECHA_PARENTESES PARA instrucao_composta:s
+                    {: RESULT = "COMANDO PARA: init: " + e1 + ", incremento: " + e3 + ", EXECUTA: " + s;
+                       System.out.println("Fim do Comando PARA\n "); :}
+                    | ABRE_PARENTESES expressao_atribuicao:e1 FECHA_COMANDO FECHA_COMANDO FECHA_PARENTESES PARA instrucao_composta:s
+                    {: RESULT = "COMANDO PARA: init: " + e1 + ", EXECUTA: " + s;
+                       System.out.println("Fim do Comando PARA \n "); :}
                     ;
 
 /*Instruções de Pulo*/                      
 instrucao_pulo ::=   FECHA_COMANDO CONTINUAR
+                     {: RESULT = "COMANDO CONTINUAR"; :}
                    | FECHA_COMANDO PARAR
-                   | FECHA_COMANDO expressao RETORNAR
+                     {: RESULT = "COMANDO PARAR"; :}
+                   | FECHA_COMANDO expressao:e1 RETORNAR
+                     {: RESULT = "COMANDO RETORNAR: " + e1; :}
                    ;
 
 /*Comandos*/
-comando ::= comando_escreva | comando_guarda ;
+comando ::= comando_escreva:e1
+            {: RESULT = e1; :}
+          | comando_guarda:e1
+            {: RESULT = e1; :} ;
 
-comando_escreva ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR FECHA_PARENTESES ESCREVA
-{: System.out.println("Comando ESCREVA encontrado\n "); :}
-			      | FECHA_COMANDO ABRE_PARENTESES STRING FECHA_PARENTESES ESCREVA
-                  {: System.out.println("Comando ESCREVA encontrado\n "); :}
+comando_escreva ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR:e1 FECHA_PARENTESES ESCREVA
+                    {: RESULT = "COMANDO ESCREVA, ARGUMENTO: " + e1;
+                       gerador.gerar_printa(e1);
+                       System.out.println("Comando ESCREVA encontrado: " + e1 + "\n "); :}
+			      | FECHA_COMANDO ABRE_PARENTESES STRING:e1 FECHA_PARENTESES ESCREVA
+                  {: RESULT = "COMANDO ESCREVA, ARGUMENTO: " + e1;
+                     gerador.gerar_printa(e1);
+                     System.out.println("Comando ESCREVA encontrado: " + e1 + "\n "); :}
                   ;
 
-comando_guarda ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR FECHA_PARENTESES GUARDA 
-{: System.out.println("Comando GUARDA encontrado\n "); :};
+comando_guarda ::= FECHA_COMANDO ABRE_PARENTESES IDENTIFICADOR:e1 FECHA_PARENTESES GUARDA 
+                   {: RESULT = "COMANDO GUARDA, ARGUMENTO: " + e1;
+                      System.out.println("Comando GUARDA encontrado: " + e1 + "\n ");
+                      gerador.gerar_scanf(e1); :};
