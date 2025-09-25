@@ -17,5 +17,10 @@ public class Tabelasimbolos {
 	    public void inserir_simbolo (Object identificador, Object tipo) {
 		   tabela.put(identificador, tipo);
 	    }
+	    
+	    // Metodo para verificar se identificador existe sem imprimir erro
+	    public boolean simbolo_existe (Object identificador) {
+		   return tabela.get(identificador) != null;
+	    }
 
 }

@@ -574,10 +574,14 @@ class CUP$Parser$actions {
 		int e1left = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
 		int e1right = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object e1 = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		 tabelasimbolos.inserir_simbolo(e2, e1);
-                   RESULT = "DECLARACAO DE VARIAVEL [" + e2 + "]  do tipo: " + e1;
-                   System.out.println("Variavel declarada: " + e2 + " do tipo " + e1 + "\n");
-                   gerador.declarar_variavel(e2.toString(), e1.toString()); 
+		 if (analisadorsemantico.verificar_declaracao_duplicada(e2, tabelasimbolos)) {
+                      RESULT = "ERRO SEMANTICO - DECLARACAO DUPLICADA";
+                   } else {
+                      tabelasimbolos.inserir_simbolo(e2, e1);
+                      RESULT = "DECLARACAO DE VARIAVEL [" + e2 + "]  do tipo: " + e1;
+                      System.out.println("Variavel declarada: " + e2 + " do tipo " + e1 + "\n");
+                      gerador.declarar_variavel(e2.toString(), e1.toString());
+                   } 
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("declaracao",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -592,9 +596,13 @@ class CUP$Parser$actions {
 		int e1left = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
 		int e1right = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object e1 = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		 tabelasimbolos.inserir_simbolo(e2, e1);
-                   RESULT = "DECLARACAO DE ARRAY [" + e2 + "]  do tipo: " + e1;
-                   System.out.println("Array declarado: " + e2 + " do tipo " + e1 + "\n"); 
+		 if (analisadorsemantico.verificar_declaracao_duplicada(e2, tabelasimbolos)) {
+                      RESULT = "ERRO SEMANTICO - DECLARACAO DUPLICADA";
+                   } else {
+                      tabelasimbolos.inserir_simbolo(e2, e1);
+                      RESULT = "DECLARACAO DE ARRAY [" + e2 + "]  do tipo: " + e1;
+                      System.out.println("Array declarado: " + e2 + " do tipo " + e1 + "\n");
+                   } 
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("declaracao",2, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-5)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -1017,8 +1025,12 @@ class CUP$Parser$actions {
 		int e2left = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
 		int e2right = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object e2 = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		 RESULT = "Divisao -> " + e1 + "/" + e2;
-                                System.out.println("Expressao aritmetica de  DIVISAO encontrada \n "); 
+		 if (analisadorsemantico.verificar_divisao_por_zero("/", e2)) {
+                                   RESULT = "ERRO SEMANTICO - DIVISAO POR ZERO";
+                                } else {
+                                   RESULT = "Divisao -> " + e1 + "/" + e2;
+                                   System.out.println("Expressao aritmetica de  DIVISAO encontrada \n ");
+                                } 
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("expressao_multiplicativa",15, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;
@@ -1033,8 +1045,12 @@ class CUP$Parser$actions {
 		int e2left = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).left;
 		int e2right = ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()).right;
 		Object e2 = (Object)((java_cup.runtime.Symbol) CUP$Parser$stack.peek()).value;
-		 RESULT = "Resto -> " + e1 + "%" + e2;
-                                System.out.println("Expressao aritmetica de RESTO encontrada \n "); 
+		 if (analisadorsemantico.verificar_divisao_por_zero("%", e2)) {
+                                   RESULT = "ERRO SEMANTICO - MODULO POR ZERO";
+                                } else {
+                                   RESULT = "Resto -> " + e1 + "%" + e2;
+                                   System.out.println("Expressao aritmetica de RESTO encontrada \n ");
+                                } 
               CUP$Parser$result = parser.getSymbolFactory().newSymbol("expressao_multiplicativa",15, ((java_cup.runtime.Symbol)CUP$Parser$stack.elementAt(CUP$Parser$top-2)), ((java_cup.runtime.Symbol)CUP$Parser$stack.peek()), RESULT);
             }
           return CUP$Parser$result;

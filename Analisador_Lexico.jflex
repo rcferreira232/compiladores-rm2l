@@ -36,9 +36,9 @@ classes da biblioteca sem ter que especificar cada uma delas separadamente.*/
 identifier = [:jletter:] ([:jletter:]|[:jletterdigit:])*
 /* Definições dos padrões com as palavras invertidas */
 naeloob = true | false
-taolf = [:digit:]* "." [:digit:]+;
-rahc = ([:jletter:] | [digit]); 
-orietni = [0-9][0-9]*
+taolf = [0-9]+ "." [0-9]+
+rahc = ([:jletter:] | [:digit:]); 
+orietni = [0-9]+
 //inteir negativo = 0 | ("(-)" [1-9][0-9]*) | [1-9][0-9]*
 
 %state STRING
@@ -101,8 +101,8 @@ orietni = [0-9][0-9]*
     //tirado da documentação do jflex
     \" { string.setLength(0); yybegin(STRING); }
     {naeloob} {return symbol(sym.BOOLEANO, yytext());}
-    {orietni} { return symbol(sym.INTEIRO, yytext()); }
     {taolf} { return symbol(sym.DECIMAL, yytext()); }
+    {orietni} { return symbol(sym.INTEIRO, yytext()); }
     "${rahc}$" {return symbol(sym.CARACTER, yytext());}
     {identifier} {return symbol(sym.IDENTIFICADOR, yytext());}
     [\t\r] { }
